@@ -2,7 +2,7 @@
 Flask application for Local AI RAG Chatbot.
 Main application file with routes and handlers.
 """
-from flask import Flask, render_template, request, jsonify, send_file
+from flask import Flask, render_template, request, jsonify, send_file, session
 import os
 from werkzeug.utils import secure_filename
 from datetime import datetime
@@ -409,6 +409,91 @@ def reset_prompt():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/doc-config/current', methods=['GET'])
+def get_doc_config():
+    """Get current document template configuration."""
+    try:
+        # Check session first, then fall back to Config
+        config = {
+            'project_name': session.get('project_name', Config.PROJECT_NAME),
+            'company_name': session.get('company_name', Config.COMPANY_NAME),
+            'brand_color': session.get('brand_color', Config.BRAND_COLOR),
+            'default_template': session.get(
+                'default_template',
+                Config.DEFAULT_TEMPLATE_TYPE
+            ),
+            'logo_path': session.get('logo_path', Config.DOCUMENT_LOGO_PATH)
+        }
+        
+        return jsonify(config)
+    except Exception as e:
+        logger.error(f"Error getting document config: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/doc-config/update', methods=['POST'])
+def update_doc_config():
+    """Update document template configuration (session-based)."""
+    try:
+        data = request.get_json()
+        
+        # Validate hex color format
+        brand_color = data.get('brand_color', Config.BRAND_COLOR)
+        if not Config.validate_color_format(brand_color):
+            return jsonify({
+                'error': 'Invalid color format. Use hex format like #4A90E2'
+            }), 400
+        
+        # Store in session
+        session['project_name'] = data.get(
+            'project_name',
+            Config.PROJECT_NAME
+        )
+        session['company_name'] = data.get('company_name', '')
+        session['brand_color'] = brand_color
+        session['default_template'] = data.get(
+            'default_template',
+            Config.DEFAULT_TEMPLATE_TYPE
+        )
+        session['logo_path'] = data.get('logo_path', '')
+        
+        logger.info(
+            f"Updated document config - "
+            f"Project: {session.get('project_name')}, "
+            f"Template: {session.get('default_template')}"
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'Document configuration updated for this session'
+        })
+    except Exception as e:
+        logger.error(f"Error updating document config: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/doc-config/reset', methods=['POST'])
+def reset_doc_config():
+    """Reset document configuration to defaults."""
+    try:
+        # Clear session values
+        session.pop('project_name', None)
+        session.pop('company_name', None)
+        session.pop('brand_color', None)
+        session.pop('default_template', None)
+        session.pop('logo_path', None)
+        
+        logger.info("Reset document configuration to defaults")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Document configuration reset to defaults'
+        })
+    except Exception as e:
+        logger.error(f"Error resetting document config: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/api/generate-word-report', methods=['POST'])
 def generate_word_report():
     """
@@ -437,18 +522,47 @@ def generate_word_report():
             'query': query
         }
         
-        # Generate Word document
-        filename = create_process_document(
-            analysis_text, process_name, metadata
+        # Apply session-based configuration overrides
+        original_config = {}
+        if 'project_name' in session:
+            original_config['PROJECT_NAME'] = Config.PROJECT_NAME
+            Config.PROJECT_NAME = session['project_name']
+        if 'company_name' in session:
+            original_config['COMPANY_NAME'] = Config.COMPANY_NAME
+            Config.COMPANY_NAME = session['company_name']
+        if 'brand_color' in session:
+            original_config['BRAND_COLOR'] = Config.BRAND_COLOR
+            Config.BRAND_COLOR = session['brand_color']
+        if 'logo_path' in session:
+            original_config['DOCUMENT_LOGO_PATH'] = Config.DOCUMENT_LOGO_PATH
+            Config.DOCUMENT_LOGO_PATH = session['logo_path']
+        
+        # Get template type from session or use default
+        template_type = session.get(
+            'default_template',
+            Config.DEFAULT_TEMPLATE_TYPE
         )
         
-        logger.info(f"Generated Word report: {filename}")
-        
-        return jsonify({
-            'success': True,
-            'filename': filename,
-            'download_url': f'/api/download/{filename}'
-        })
+        try:
+            # Generate Word document
+            filename = create_process_document(
+                analysis_text,
+                process_name,
+                metadata,
+                template_type=template_type
+            )
+            
+            logger.info(f"Generated Word report: {filename}")
+            
+            return jsonify({
+                'success': True,
+                'filename': filename,
+                'download_url': f'/api/download/{filename}'
+            })
+        finally:
+            # Restore original config values
+            for key, value in original_config.items():
+                setattr(Config, key, value)
         
     except Exception as e:
         logger.error(f"Error generating Word report: {e}")

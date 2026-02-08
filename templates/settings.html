@@ -184,6 +184,81 @@
         </div>
     </div>
 
+    <!-- Document Template Configuration -->
+    <div class="settings-section">
+        <h3>📄 Document Template Configuration</h3>
+
+        <p class="info-text">Customize Word document branding and default template type. Changes are session-based until saved to .env file.</p>
+
+        <div class="form-group">
+            <label for="project-name">Project Name:</label>
+            <input type="text" id="project-name" placeholder="GitHub Process Manager" class="input-field">
+            <small class="info-text">Displayed in document headers</small>
+        </div>
+
+        <div class="form-group">
+            <label for="company-name">Company Name (Optional):</label>
+            <input type="text" id="company-name" placeholder="Leave empty for generic" class="input-field">
+            <small class="info-text">Added to document headers if provided</small>
+        </div>
+
+        <div class="form-group">
+            <label for="brand-color">Brand Color:</label>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <input type="color" id="brand-color-picker" value="#4A90E2" style="width: 60px; height: 40px; border: none; cursor: pointer;">
+                <input type="text" id="brand-color" placeholder="#4A90E2" class="input-field" style="flex: 1;" maxlength="7" pattern="^#[0-9A-Fa-f]{6}$">
+            </div>
+            <small class="info-text">Hex color for document headings and styling</small>
+        </div>
+
+        <div class="form-group">
+            <label for="default-template">Default Template Type:</label>
+            <select id="default-template" class="input-field">
+                <option value="generic">Generic - General Purpose Documentation</option>
+                <option value="sox_audit">SOX Audit - Compliance Reports</option>
+                <option value="mlops_workflow">MLOps Workflow - ML Pipeline Docs</option>
+                <option value="devops_pipeline">DevOps Pipeline - CI/CD Documentation</option>
+            </select>
+            <small class="info-text">Default template used for Word document generation</small>
+        </div>
+
+        <div class="form-group">
+            <label for="logo-path">Document Logo Path (Optional):</label>
+            <input type="text" id="logo-path" placeholder="/path/to/logo.png" class="input-field">
+            <small class="info-text">Path to logo image (.png, .jpg, .jpeg) for document headers</small>
+        </div>
+
+        <div id="template-config-preview" class="info-card" style="margin-bottom: 1rem;">
+            <strong>Current Configuration:</strong>
+            <div style="margin-top: 0.5rem;">
+                <div style="margin-bottom: 0.5rem;">
+                    <strong>Header:</strong> 
+                    <span id="preview-header" style="font-style: italic;"></span>
+                </div>
+                <div style="margin-bottom: 0.5rem;">
+                    <strong>Color:</strong> 
+                    <span id="preview-color-box" style="display: inline-block; width: 20px; height: 20px; border: 1px solid #ccc; vertical-align: middle;"></span>
+                    <span id="preview-color-text" style="margin-left: 0.5rem;"></span>
+                </div>
+                <div>
+                    <strong>Template:</strong> 
+                    <span id="preview-template" style="font-style: italic;"></span>
+                </div>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 0.5rem;">
+            <button class="btn-primary" id="save-doc-config-btn">💾 Save Configuration</button>
+            <button class="btn-secondary" id="reset-doc-config-btn">🔄 Reset to Defaults</button>
+        </div>
+        
+        <div id="doc-config-status" class="status-message"></div>
+        
+        <div class="info-card" style="margin-top: 1rem; background-color: #fff3cd; border-left: 4px solid #ffc107;">
+            <p style="margin: 0;"><strong>ℹ️ Note:</strong> Configuration changes are session-only. For permanent changes, update PROJECT_NAME, COMPANY_NAME, BRAND_COLOR, DEFAULT_TEMPLATE_TYPE, and DOCUMENT_LOGO_PATH in your .env file.</p>
+        </div>
+    </div>
+
     <!-- System Information -->
     <div class="settings-section">
         <h3>ℹ️ System Information</h3>
@@ -684,6 +759,175 @@
 
         // Load prompt templates on page load
         loadPromptTemplates();
+
+    // Document Template Configuration
+    const projectNameInput = document.getElementById('project-name');
+    const companyNameInput = document.getElementById('company-name');
+    const brandColorInput = document.getElementById('brand-color');
+    const brandColorPicker = document.getElementById('brand-color-picker');
+    const defaultTemplateSelect = document.getElementById('default-template');
+    const logoPathInput = document.getElementById('logo-path');
+    const saveDocConfigBtn = document.getElementById('save-doc-config-btn');
+    const resetDocConfigBtn = document.getElementById('reset-doc-config-btn');
+    const docConfigStatus = document.getElementById('doc-config-status');
+
+    // Preview elements
+    const previewHeader = document.getElementById('preview-header');
+    const previewColorBox = document.getElementById('preview-color-box');
+    const previewColorText = document.getElementById('preview-color-text');
+    const previewTemplate = document.getElementById('preview-template');
+
+    // Template name mapping
+    const templateNames = {
+        'generic': 'Generic - General Purpose Documentation',
+        'sox_audit': 'SOX Audit - Compliance Reports',
+        'mlops_workflow': 'MLOps Workflow - ML Pipeline Docs',
+        'devops_pipeline': 'DevOps Pipeline - CI/CD Documentation'
+    };
+
+    // Load current document configuration
+    async function loadDocConfig() {
+        try {
+            const response = await fetch('/api/doc-config/current');
+            const data = await response.json();
+
+            if (response.ok) {
+                projectNameInput.value = data.project_name || 'GitHub Process Manager';
+                companyNameInput.value = data.company_name || '';
+                brandColorInput.value = data.brand_color || '#4A90E2';
+                brandColorPicker.value = data.brand_color || '#4A90E2';
+                defaultTemplateSelect.value = data.default_template || 'generic';
+                logoPathInput.value = data.logo_path || '';
+                
+                updateDocConfigPreview();
+            }
+        } catch (error) {
+            console.error('Error loading document config:', error);
+        }
+    }
+
+    // Update preview
+    function updateDocConfigPreview() {
+        const projectName = projectNameInput.value || 'GitHub Process Manager';
+        const companyName = companyNameInput.value;
+        const brandColor = brandColorInput.value || '#4A90E2';
+        const templateType = defaultTemplateSelect.value;
+
+        // Update header preview
+        if (companyName) {
+            previewHeader.textContent = `${companyName} | ${projectName} | Process Documentation`;
+        } else {
+            previewHeader.textContent = `${projectName} | Process Documentation`;
+        }
+
+        // Update color preview
+        previewColorBox.style.backgroundColor = brandColor;
+        previewColorText.textContent = brandColor;
+
+        // Update template preview
+        previewTemplate.textContent = templateNames[templateType] || templateType;
+    }
+
+    // Sync color picker with text input
+    brandColorPicker.addEventListener('input', () => {
+        brandColorInput.value = brandColorPicker.value;
+        updateDocConfigPreview();
+    });
+
+    brandColorInput.addEventListener('input', () => {
+        const color = brandColorInput.value;
+        if (/^#[0-9A-Fa-f]{6}$/.test(color)) {
+            brandColorPicker.value = color;
+            updateDocConfigPreview();
+        }
+    });
+
+    // Update preview on input changes
+    projectNameInput.addEventListener('input', updateDocConfigPreview);
+    companyNameInput.addEventListener('input', updateDocConfigPreview);
+    defaultTemplateSelect.addEventListener('change', updateDocConfigPreview);
+
+    // Save document configuration
+    saveDocConfigBtn.addEventListener('click', async () => {
+        const config = {
+            project_name: projectNameInput.value || 'GitHub Process Manager',
+            company_name: companyNameInput.value,
+            brand_color: brandColorInput.value || '#4A90E2',
+            default_template: defaultTemplateSelect.value,
+            logo_path: logoPathInput.value
+        };
+
+        // Validate hex color
+        if (!/^#[0-9A-Fa-f]{6}$/.test(config.brand_color)) {
+            showStatus(docConfigStatus, '❌ Invalid color format. Use hex format like #4A90E2', 'error');
+            return;
+        }
+
+        saveDocConfigBtn.disabled = true;
+        showStatus(docConfigStatus, '⏳ Saving configuration...', 'info');
+
+        try {
+            const response = await fetch('/api/doc-config/update', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(config)
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                showStatus(docConfigStatus, `✅ ${data.message}`, 'success');
+                updateDocConfigPreview();
+            } else {
+                showStatus(docConfigStatus, `❌ Error: ${data.error}`, 'error');
+            }
+        } catch (error) {
+            showStatus(docConfigStatus, `❌ Error: ${error.message}`, 'error');
+        } finally {
+            saveDocConfigBtn.disabled = false;
+        }
+    });
+
+    // Reset document configuration
+    resetDocConfigBtn.addEventListener('click', async () => {
+        if (!confirm('Reset to default configuration? This will clear custom branding.')) {
+            return;
+        }
+
+        resetDocConfigBtn.disabled = true;
+        showStatus(docConfigStatus, '⏳ Resetting configuration...', 'info');
+
+        try {
+            const response = await fetch('/api/doc-config/reset', {
+                method: 'POST'
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                showStatus(docConfigStatus, `✅ ${data.message}`, 'success');
+                // Reload config from defaults
+                projectNameInput.value = 'GitHub Process Manager';
+                companyNameInput.value = '';
+                brandColorInput.value = '#4A90E2';
+                brandColorPicker.value = '#4A90E2';
+                defaultTemplateSelect.value = 'generic';
+                logoPathInput.value = '';
+                updateDocConfigPreview();
+            } else {
+                showStatus(docConfigStatus, `❌ Error: ${data.error}`, 'error');
+            }
+        } catch (error) {
+            showStatus(docConfigStatus, `❌ Error: ${error.message}`, 'error');
+        } finally {
+            resetDocConfigBtn.disabled = false;
+        }
+    });
+
+    // Load document config on page load
+    loadDocConfig();
 
 </script>
 {% endblock %}
