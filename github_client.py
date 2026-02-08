@@ -299,14 +299,15 @@ class GitHubClient:
         """Check if GitHub client is connected to a repository."""
         return self.github is not None and self.repo is not None
     
-    def trigger_sox_workflow(self, control_name, control_data, analysis_type='standard'):
+    def trigger_process_workflow(self, process_name, process_data, analysis_type='standard', workflow_file='process-analysis-doc.yml'):
         """
-        Trigger the SOX Control Analysis workflow.
+        Trigger the Process Analysis workflow.
         
         Args:
-            control_name: Name of the SOX control
-            control_data: Control data and context
+            process_name: Name of the process/control/workflow
+            process_data: Process data and context
             analysis_type: Type of analysis (standard, detailed, summary)
+            workflow_file: Workflow filename (default: process-analysis-doc.yml)
         
         Returns:
             Dictionary with workflow run information
@@ -316,19 +317,19 @@ class GitHubClient:
             raise Exception("GitHub repository not connected")
         
         try:
-            workflow = self.repo.get_workflow('sox-analysis-doc.yml')
+            workflow = self.repo.get_workflow(workflow_file)
             
             # Prepare inputs
             inputs = {
-                'control_name': control_name,
-                'control_data': control_data,
+                'process_name': process_name,
+                'process_data': process_data,
                 'analysis_type': analysis_type
             }
             
             # Trigger workflow
             result = workflow.create_dispatch(ref='main', inputs=inputs)
             
-            logger.info(f"Triggered SOX workflow for control: {control_name}")
+            logger.info(f"Triggered process workflow for: {process_name}")
             
             # Get the latest run ID (this is approximate)
             import time
@@ -346,19 +347,19 @@ class GitHubClient:
             
         except Exception as e:
             error_msg = str(e)
-            logger.error(f"Error triggering SOX workflow: {error_msg}")
+            logger.error(f"Error triggering process workflow: {error_msg}")
             
             # Provide helpful error message for common issues
             if '404' in error_msg:
                 raise Exception(
-                    "Workflow file 'sox-analysis-doc.yml' not found in repository. "
-                    "Please ensure you have committed and pushed the .github/workflows/sox-analysis-doc.yml file to GitHub. "
-                    "Run: git add .github/workflows/sox-analysis-doc.yml && git commit -m 'Add SOX workflow' && git push"
+                    f"Workflow file '{workflow_file}' not found in repository. "
+                    "Please ensure you have committed and pushed the .github/workflows/ file to GitHub. "
+                    f"Run: git add .github/workflows/{workflow_file} && git commit -m 'Add workflow' && git push"
                 )
             else:
                 raise
     
-    def check_and_download_artifact(self, run_id, artifact_name='sox-report'):
+    def check_and_download_artifact(self, run_id, artifact_name='process-report'):
         """
         Check for workflow artifacts and download if available.
         
@@ -462,3 +463,8 @@ class GitHubClient:
                 'success': False,
                 'error': str(e)
             }
+    
+    # Backward compatibility alias
+    def trigger_sox_workflow(self, control_name, control_data, analysis_type='standard'):
+        """Legacy function for backward compatibility. Calls trigger_process_workflow."""
+        return self.trigger_process_workflow(control_name, control_data, analysis_type, 'sox-analysis-doc.yml')

@@ -1,6 +1,6 @@
-# 🤖 Local AI RAG Chatbot with Gemini API & GitHub Integration
+# 🤖 GitHub Process Manager - AI-Powered Documentation Assistant
 
-A lightweight, local AI-powered chatbot that combines **Retrieval-Augmented Generation (RAG)** with the **Gemini API** and **GitHub repository integration**. Upload reference documents, connect to your GitHub repositories, and get intelligent responses powered by Google's Gemini AI.
+A lightweight, local AI-powered assistant that combines **Retrieval-Augmented Generation (RAG)** with the **Gemini API** and **GitHub repository integration**. Upload reference documents, connect to your GitHub repositories, and get intelligent responses for process documentation, SOX compliance, MLOps workflows, DevOps pipelines, and more.
 
 ## ✨ Features
 
@@ -8,10 +8,38 @@ A lightweight, local AI-powered chatbot that combines **Retrieval-Augmented Gene
 - 🤖 **Gemini AI Integration**: Leverages Google's Gemini Pro for intelligent responses
 - 🔗 **GitHub Repository Connection**: Access PRs, issues, workflow runs, and repository files
 - ⚡ **GitHub Actions Control**: Manually trigger workflows directly from the interface
+- � **Word Document Generation**: Create professionally formatted process documentation
 - 💻 **Browser-Based UI**: Clean, professional interface with light blue and white theme
 - 🪶 **Lightweight & Local**: Runs entirely on your machine with minimal resource usage
 - 📊 **ChromaDB Vector Storage**: Efficient document embedding and retrieval
 - 🔒 **Secure Configuration**: Environment-based secrets management
+- 🎯 **Multi-Template Support**: SOX audits, MLOps workflows, DevOps pipelines, and generic documentation
+
+## 🎯 Use Cases
+
+### SOX Compliance & Auditing
+- Document internal controls and procedures
+- Generate 5-section SOX control analysis reports
+- Track testing procedures and results
+- Create audit-ready Word documents
+
+### MLOps Workflows
+- Document machine learning pipelines
+- Track model training and validation
+- Generate deployment documentation
+- Monitor ML workflow processes
+
+### DevOps Pipelines
+- Document CI/CD pipelines
+- Track build and deployment processes
+- Generate pipeline documentation
+- Monitor infrastructure changes
+
+### General Process Documentation
+- Create structured process documentation
+- Generate professional Word reports
+- Track project workflows
+- Document best practices and procedures
 
 ## 📋 Prerequisites
 
@@ -26,7 +54,7 @@ A lightweight, local AI-powered chatbot that combines **Retrieval-Augmented Gene
 
 ```bash
 git clone <your-repo-url>
-cd Feb6DEMObot
+cd github-process-manager
 ```
 
 ### 2. Create Virtual Environment
@@ -123,13 +151,14 @@ The application will be available at: **http://localhost:5000**
 ## 🏗️ Project Structure
 
 ```
-Feb6DEMObot/
+github-process-manager/
 ├── app.py                  # Main Flask application
 ├── config.py               # Configuration management
 ├── logger.py               # Logging setup
 ├── rag_engine.py           # RAG document processing
 ├── gemini_client.py        # Gemini API integration
 ├── github_client.py        # GitHub API integration
+├── word_generator.py       # Word document generation
 ├── requirements.txt        # Python dependencies
 ├── .env.template           # Environment variable template
 ├── .gitignore             # Git ignore rules
@@ -140,8 +169,13 @@ Feb6DEMObot/
 ├── static/
 │   └── css/
 │       └── style.css      # Application styling
+├── .github/
+│   └── workflows/
+│       ├── process-analysis-doc.yml  # Generic process workflow
+│       └── sox-analysis-doc.yml      # SOX-specific workflow (legacy)
 ├── chroma_db/             # ChromaDB storage (auto-created)
 ├── uploads/               # Temporary upload folder (auto-created)
+├── generated_reports/     # Generated Word documents (auto-created)
 └── README.md              # This file
 ```
 

@@ -1,6 +1,6 @@
 """
-Word Document Generator for KPMG SOX Control Analysis Reports.
-Generates professionally formatted .docx files with 5-section structure.
+Word Document Generator for Process Analysis Reports.
+Generates professionally formatted .docx files with structured sections.
 """
 from docx import Document
 from docx.shared import Pt, RGBColor, Inches
@@ -11,13 +11,13 @@ import re
 from logger import logger
 
 
-def parse_sox_sections(analysis_text):
+def parse_analysis_sections(analysis_text):
     """
-    Parse the chatbot response into 5 KPMG SOX sections.
+    Parse the chatbot response into structured sections.
     
     Sections:
-    1. Control Objective
-    2. Risks Addressed
+    1. Control Objective (or Model Overview, Pipeline Overview, etc.)
+    2. Risks Addressed (or Data Pipeline, Build Steps, etc.)
     3. Testing Procedures
     4. Test Results and Findings
     5. Conclusion and Recommendation
@@ -57,19 +57,19 @@ def parse_sox_sections(analysis_text):
     return sections
 
 
-def create_sox_word_document(analysis_text, control_name='SOX Control Analysis', metadata=None):
+def create_process_document(analysis_text, process_name='Process Analysis', metadata=None):
     """
-    Generate KPMG SOX Control Analysis Word document.
+    Generate Process Analysis Word document.
     
     Creates a professionally formatted Word document with:
-    - KPMG header
+    - Clean header with project branding
     - 5 structured sections
     - Proper styling (Calibri, headings, spacing)
     - Page footer with page numbers
     
     Args:
         analysis_text (str): The chatbot's analysis response
-        control_name (str): Name of the SOX control being analyzed
+        process_name (str): Name of the process being analyzed
         metadata (dict): Optional metadata (timestamp, query, user)
         
     Returns:
@@ -91,25 +91,25 @@ def create_sox_word_document(analysis_text, control_name='SOX Control Analysis',
         font.name = 'Calibri'
         font.size = Pt(11)
         
-        # Add KPMG header
+        # Add header with project branding
         header_section = doc.sections[0]
         header = header_section.header
         header_para = header.paragraphs[0]
-        header_para.text = 'KPMG | SOX Control Testing'
+        header_para.text = 'GitHub Process Manager | Process Documentation'
         header_para.alignment = WD_ALIGN_PARAGRAPH.RIGHT
         header_run = header_para.runs[0]
         header_run.font.size = Pt(10)
-        header_run.font.color.rgb = RGBColor(0, 51, 141)  # KPMG Blue
+        header_run.font.color.rgb = RGBColor(74, 144, 226)  # Professional blue (#4A90E2)
         
         # Add title
-        title = doc.add_heading('SOX Control Analysis Report', 0)
+        title = doc.add_heading('Process Analysis Report', 0)
         title.alignment = WD_ALIGN_PARAGRAPH.CENTER
         title_run = title.runs[0]
-        title_run.font.color.rgb = RGBColor(0, 51, 141)  # KPMG Blue
+        title_run.font.color.rgb = RGBColor(74, 144, 226)  # Professional blue (#4A90E2)
         title_run.font.size = Pt(18)
         
-        # Add control name
-        control_heading = doc.add_heading(control_name, level=2)
+        # Add process name
+        process_heading = doc.add_heading(process_name, level=2)
         control_heading.alignment = WD_ALIGN_PARAGRAPH.CENTER
         
         doc.add_paragraph()  # Spacing
@@ -126,7 +126,7 @@ def create_sox_word_document(analysis_text, control_name='SOX Control Analysis',
             info_table.cell(1, 1).text = metadata.get('query', 'N/A')
             
             info_table.cell(2, 0).text = 'Report Type:'
-            info_table.cell(2, 1).text = 'SOX Control Analysis'
+            info_table.cell(2, 1).text = 'Process Analysis Documentation'
             
             doc.add_paragraph()  # Spacing
         
@@ -147,7 +147,7 @@ def create_sox_word_document(analysis_text, control_name='SOX Control Analysis',
             # Add section heading
             section_heading = doc.add_heading(title_text, level=1)
             section_run = section_heading.runs[0]
-            section_run.font.color.rgb = RGBColor(0, 51, 141)  # KPMG Blue
+            section_run.font.color.rgb = RGBColor(74, 144, 226)  # Professional blue (#4A90E2)
             section_run.font.size = Pt(14)
             
             # Add section content
@@ -206,8 +206,8 @@ def create_sox_word_document(analysis_text, control_name='SOX Control Analysis',
         
         # Generate filename
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        safe_control_name = re.sub(r'[^\w\s-]', '', control_name).strip().replace(' ', '_')
-        filename = f'SOX_Analysis_{safe_control_name}_{timestamp}.docx'
+        safe_process_name = re.sub(r'[^\w\s-]', '', process_name).strip().replace(' ', '_')
+        filename = f'Process_Analysis_{safe_process_name}_{timestamp}.docx'
         filepath = os.path.join('generated_reports', filename)
         
         # Save document
@@ -288,3 +288,12 @@ def cleanup_old_reports(hours=24):
     except Exception as e:
         logger.error(f"Error cleaning up old reports: {e}")
         return 0
+
+
+# Backward compatibility alias
+def create_sox_word_document(analysis_text, control_name='SOX Control Analysis', metadata=None):
+    """
+    Legacy function for backward compatibility.
+    Calls create_process_document with renamed parameters.
+    """
+    return create_process_document(analysis_text, process_name=control_name, metadata=metadata)

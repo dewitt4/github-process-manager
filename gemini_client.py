@@ -75,11 +75,8 @@ class GeminiClient:
         """
         prompt_parts = []
         
-        # Detect if this is a SOX control analysis query
-        is_sox_query = any(keyword in user_query.lower() for keyword in [
-            'sox control', 'control analysis', 'control objective', 
-            'testing procedure', 'sox', 'control test'
-        ])
+        # Detect query type for structured responses
+        query_type = self._detect_query_type(user_query)
         
         # System instruction
         prompt_parts.append(
@@ -89,31 +86,14 @@ class GeminiClient:
             "information, say so clearly."
         )
         
-        # Add SOX-specific instructions if this is a SOX query
-        if is_sox_query:
-            prompt_parts.append(
-                "\n\n**IMPORTANT: SOX Control Analysis Structure**\n"
-                "When analyzing SOX controls, structure your response with these 5 sections:\n\n"
-                "1. Control Objective\n"
-                "   - Clearly state what the control aims to achieve\n"
-                "   - Describe the purpose and scope\n\n"
-                "2. Risks Addressed\n"
-                "   - List specific risks mitigated by this control\n"
-                "   - Use bullet points for clarity\n\n"
-                "3. Testing Procedures\n"
-                "   - Provide step-by-step testing procedures\n"
-                "   - Include sample size and selection criteria\n"
-                "   - Detail what evidence to examine\n\n"
-                "4. Test Results and Findings\n"
-                "   - Report observations from testing\n"
-                "   - Note any exceptions or issues identified\n"
-                "   - Include quantitative results (e.g., 25/25 samples passed)\n\n"
-                "5. Conclusion and Recommendation\n"
-                "   - Provide overall assessment of control effectiveness\n"
-                "   - Recommend any remediation actions if needed\n"
-                "   - State whether control is operating effectively\n\n"
-                "Use numbered headings exactly as shown above for consistency."
-            )
+        # Add type-specific instructions for structured responses
+        if query_type == 'sox_audit':
+            prompt_parts.append(self._get_sox_audit_instructions())
+        elif query_type == 'mlops_workflow':
+            prompt_parts.append(self._get_mlops_instructions())
+        elif query_type == 'devops_pipeline':
+            prompt_parts.append(self._get_devops_instructions())
+        # For 'generic' type, no special structure needed
         
         # Add RAG context if available
         if rag_context and len(rag_context) > 0:
@@ -183,3 +163,117 @@ class GeminiClient:
         except Exception as e:
             logger.error(f"Gemini API connection test failed: {e}")
             return False
+    
+    def _detect_query_type(self, query):
+        """
+        Detect the type of query to apply appropriate response structure.
+        
+        Returns:
+            str: 'sox_audit', 'mlops_workflow', 'devops_pipeline', or 'generic'
+        """
+        query_lower = query.lower()
+        
+        # SOX/Audit keywords
+        sox_keywords = ['sox control', 'control analysis', 'control objective', 
+                       'testing procedure', 'sox', 'control test', 'audit', 
+                       'compliance', 'internal control']
+        
+        # MLOps keywords
+        mlops_keywords = ['model', 'mlops', 'machine learning', 'training', 
+                         'inference', 'dataset', 'ml pipeline', 'model deployment',
+                         'feature engineering', 'hyperparameter', 'ml workflow']
+        
+        # DevOps keywords
+        devops_keywords = ['pipeline', 'ci/cd', 'deployment', 'build', 'release',
+                          'devops', 'kubernetes', 'docker', 'container', 'jenkins',
+                          'gitlab ci', 'github actions']
+        
+        # Check for each type
+        if any(keyword in query_lower for keyword in sox_keywords):
+            return 'sox_audit'
+        elif any(keyword in query_lower for keyword in mlops_keywords):
+            return 'mlops_workflow'
+        elif any(keyword in query_lower for keyword in devops_keywords):
+            return 'devops_pipeline'
+        else:
+            return 'generic'
+    
+    def _get_sox_audit_instructions(self):
+        """SOX audit structured response instructions."""
+        return (
+            "\n\n**IMPORTANT: SOX Control Analysis Structure**\n"
+            "When analyzing SOX controls, structure your response with these 5 sections:\n\n"
+            "1. Control Objective\n"
+            "   - Clearly state what the control aims to achieve\n"
+            "   - Describe the purpose and scope\n\n"
+            "2. Risks Addressed\n"
+            "   - List specific risks mitigated by this control\n"
+            "   - Use bullet points for clarity\n\n"
+            "3. Testing Procedures\n"
+            "   - Provide step-by-step testing procedures\n"
+            "   - Include sample size and selection criteria\n"
+            "   - Detail what evidence to examine\n\n"
+            "4. Test Results and Findings\n"
+            "   - Report observations from testing\n"
+            "   - Note any exceptions or issues identified\n"
+            "   - Include quantitative results (e.g., 25/25 samples passed)\n\n"
+            "5. Conclusion and Recommendation\n"
+            "   - Provide overall assessment of control effectiveness\n"
+            "   - Recommend any remediation actions if needed\n"
+            "   - State whether control is operating effectively\n\n"
+            "Use numbered headings exactly as shown above for consistency."
+        )
+    
+    def _get_mlops_instructions(self):
+        """MLOps workflow structured response instructions."""
+        return (
+            "\n\n**IMPORTANT: MLOps Workflow Documentation Structure**\n"
+            "When documenting ML workflows, structure your response with these 5 sections:\n\n"
+            "1. Model Overview\n"
+            "   - Describe model architecture and purpose\n"
+            "   - Define inputs, outputs, and use case\n\n"
+            "2. Data Pipeline\n"
+            "   - Detail data sources and preprocessing steps\n"
+            "   - Explain data validation and quality checks\n"
+            "   - Describe feature engineering process\n\n"
+            "3. Training Process\n"
+            "   - Document training methodology\n"
+            "   - Specify hyperparameters and configurations\n"
+            "   - Describe experiment tracking approach\n\n"
+            "4. Validation Results\n"
+            "   - Report performance metrics (accuracy, F1, etc.)\n"
+            "   - Include test dataset results\n"
+            "   - Document any model limitations or biases\n\n"
+            "5. Deployment Plan\n"
+            "   - Specify serving infrastructure\n"
+            "   - Describe monitoring and alerting strategy\n"
+            "   - Define rollback procedures\n\n"
+            "Use numbered headings exactly as shown above for consistency."
+        )
+    
+    def _get_devops_instructions(self):
+        """DevOps pipeline structured response instructions."""
+        return (
+            "\n\n**IMPORTANT: DevOps Pipeline Documentation Structure**\n"
+            "When documenting DevOps pipelines, structure your response with these 5 sections:\n\n"
+            "1. Pipeline Overview\n"
+            "   - Describe pipeline purpose and triggers\n"
+            "   - Define pipeline stages and flow\n\n"
+            "2. Build Steps\n"
+            "   - Detail compilation and build process\n"
+            "   - List dependencies and build tools\n"
+            "   - Describe artifact generation\n\n"
+            "3. Test and Quality Gates\n"
+            "   - Document test suites (unit, integration, e2e)\n"
+            "   - Specify quality metrics and thresholds\n"
+            "   - Describe security scanning steps\n\n"
+            "4. Deployment Process\n"
+            "   - Define deployment stages (dev, staging, prod)\n"
+            "   - Specify deployment strategy (blue-green, canary, etc.)\n"
+            "   - Document approval requirements\n\n"
+            "5. Monitoring and Rollback\n"
+            "   - Describe post-deployment monitoring\n"
+            "   - Define success criteria\n"
+            "   - Specify rollback procedures and triggers\n\n"
+            "Use numbered headings exactly as shown above for consistency."
+        )

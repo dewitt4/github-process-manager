@@ -33,7 +33,7 @@
     <div class="chat-box" id="chat-box">
         <div class="welcome-message">
             <h3>👋 Welcome!</h3>
-            <p>I'm your SOX AI assistant with access to:</p>
+            <p>I'm your AI process assistant with access to:</p>
             <ul>
                 <li>📚 The reference documents you upload</li>
                 <li>🔗 Your GitHub code repository data </li>
@@ -149,13 +149,15 @@
             document.getElementById(typingId).remove();
 
             if (response.ok) {
-                // Check if response contains SOX control analysis
-                const isSoxAnalysis = data.response.toLowerCase().includes('control objective')
-                    || data.response.toLowerCase().includes('sox control')
+                // Check if response contains structured analysis (SOX, MLOps, DevOps, etc.)
+                const isStructuredAnalysis = data.response.toLowerCase().includes('control objective')
+                    || data.response.toLowerCase().includes('model overview')
                     || data.response.toLowerCase().includes('testing procedure')
-                    || data.response.toLowerCase().includes('risks addressed');
+                    || data.response.toLowerCase().includes('risks addressed')
+                    || data.response.toLowerCase().includes('deployment plan')
+                    || data.response.toLowerCase().includes('pipeline stages');
 
-                addMessage('assistant', data.response, isSoxAnalysis, currentQuery);
+                addMessage('assistant', data.response, isStructuredAnalysis, currentQuery);
             } else {
                 addMessage('assistant', `❌ Error: ${data.error}`);
             }
@@ -227,7 +229,7 @@
                     },
                     body: JSON.stringify({
                         analysis_text: analysisText,
-                        control_name: 'SOX Control Analysis',
+                        process_name: 'Process Analysis',
                         query: query
                     })
                 });

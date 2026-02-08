@@ -11,7 +11,7 @@ from logger import logger
 from rag_engine import RAGEngine
 from gemini_client import GeminiClient
 from github_client import GitHubClient
-from word_generator import create_sox_word_document, list_generated_reports, cleanup_old_reports
+from word_generator import create_process_document, list_generated_reports, cleanup_old_reports
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -284,11 +284,11 @@ def health():
 @app.route('/api/generate-word-report', methods=['POST'])
 def generate_word_report():
     """
-    Generate a Word document for SOX control analysis.
+    Generate a Word document for process analysis.
     
     Request JSON:
         - analysis_text: The chatbot's analysis response
-        - control_name: Name of the SOX control (optional)
+        - process_name: Name of the process (optional)
         - query: Original user query (optional)
         
     Returns:
@@ -297,7 +297,7 @@ def generate_word_report():
     try:
         data = request.get_json()
         analysis_text = data.get('analysis_text', '')
-        control_name = data.get('control_name', 'SOX Control Analysis')
+        process_name = data.get('process_name', 'Process Analysis')
         query = data.get('query', '')
         
         if not analysis_text:
@@ -310,7 +310,7 @@ def generate_word_report():
         }
         
         # Generate Word document
-        filename = create_sox_word_document(analysis_text, control_name, metadata)
+        filename = create_process_document(analysis_text, process_name, metadata)
         
         logger.info(f"Generated Word report: {filename}")
         
@@ -399,14 +399,14 @@ def cleanup_reports():
         logger.error(f"Error cleaning up reports: {e}")
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/github/sox-analysis/trigger', methods=['POST'])
-def trigger_sox_analysis_workflow():
+@app.route('/api/github/process-analysis/trigger', methods=['POST'])
+def trigger_process_analysis_workflow():
     """
-    Trigger GitHub Actions workflow for SOX analysis.
+    Trigger GitHub Actions workflow for process analysis.
     
     Request JSON:
-        - control_name: Name of the SOX control
-        - control_data: Data for analysis
+        - process_name: Name of the process
+        - process_data: Data for analysis
         - analysis_type: Type of analysis (optional)
         
     Returns:
@@ -417,12 +417,12 @@ def trigger_sox_analysis_workflow():
             return jsonify({'error': 'GitHub not connected'}), 400
         
         data = request.get_json()
-        control_name = data.get('control_name', 'SOX Control')
-        control_data = data.get('control_data', '')
+        process_name = data.get('process_name', 'Process Analysis')
+        process_data = data.get('process_data', '')
         analysis_type = data.get('analysis_type', 'standard')
         
         # Trigger the workflow
-        run_info = github_client.trigger_sox_workflow(control_name, control_data, analysis_type)
+        run_info = github_client.trigger_process_workflow(process_name, process_data, analysis_type)
         
         return jsonify({
             'success': True,
