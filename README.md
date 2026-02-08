@@ -242,6 +242,65 @@ For persistent customization across server restarts:
 
 **Note**: Session-based changes (via UI) take priority over `.env` settings until the server restarts.
 
+### Customize Document Templates
+
+The application supports configurable Word document templates with custom branding:
+
+#### Available Document Templates
+
+1. **SOX Audit** - 5-section compliance reports (Control Objective, Risks, Testing, Results, Conclusion)
+2. **MLOps Workflow** - ML pipeline documentation (Model Overview, Data Pipeline, Training, Validation, Deployment)
+3. **DevOps Pipeline** - CI/CD documentation (Pipeline Overview, Build Steps, Quality Gates, Deployment, Monitoring)
+4. **Generic** - General purpose documentation (Overview, Components, Procedures, Results, Recommendations)
+
+#### Customize Branding
+
+Edit your `.env` file to personalize generated documents:
+
+```env
+# Project name for document headers
+PROJECT_NAME=GitHub Process Manager
+
+# Optional: Add company name to headers
+COMPANY_NAME=Your Company Name
+
+# Brand color (hex format #RRGGBB)
+BRAND_COLOR=#4A90E2
+
+# Optional: Add logo to document headers (.png, .jpg, .jpeg)
+DOCUMENT_LOGO_PATH=/path/to/your/logo.png
+
+# Default template type
+DEFAULT_TEMPLATE_TYPE=generic
+```
+
+#### Create Custom Templates
+
+Modify `document_templates.json` to add new templates:
+
+```json
+{
+  "templates": {
+    "your_template": {
+      "name": "Your Template Name",
+      "report_title": "Your Report Title",
+      "sections": [
+        {"number": 1, "title": "Section 1", "key": "Section 1"},
+        {"number": 2, "title": "Section 2", "key": "Section 2"}
+      ],
+      "keywords": ["keyword1", "keyword2"]
+    }
+  }
+}
+```
+
+**Template Features**:
+- Custom section structures (3-7 sections recommended)
+- Keyword-based auto-detection
+- Configurable headers and colors
+- Optional logo support
+- Professional formatting (Calibri, proper spacing, page numbers)
+
 ## 🏗️ Project Structure
 
 ```
@@ -256,6 +315,7 @@ github-process-manager/
 ├── requirements.txt        # Python dependencies
 ├── .env.template           # Environment variable template
 ├── .gitignore             # Git ignore rules
+├── document_templates.json # Document template configuration
 ├── templates/
 │   ├── base.html          # Base template
 │   ├── index.html         # Chat interface
@@ -283,8 +343,12 @@ Edit `config.py` or set environment variables:
 | `GEMINI_TEMPERATURE` | AI response randomness (0.0-1.0) | 0.7 |
 | `GEMINI_MAX_TOKENS` | Maximum response length | 2048 |
 | `SYSTEM_PROMPT_TEMPLATE` | Pre-defined prompt template | `default` |
-| `CUSTOM_SYSTEM_PROMPT` | Custom system instruction | None |
-| `GITHUB_TOKEN` | GitHub personal access token | Optional |
+| `CUSTOM_SYSTEM_PROMPT` | Custom system instruction | None || `PROJECT_NAME` | Project name for documents | `GitHub Process Manager` |
+| `COMPANY_NAME` | Company name for documents | None |
+| `BRAND_COLOR` | Document brand color (hex) | `#4A90E2` |
+| `DOCUMENT_LOGO_PATH` | Path to logo for documents | None |
+| `DEFAULT_TEMPLATE_TYPE` | Default document template | `generic` |
+| `DOCUMENT_TEMPLATES_PATH` | Template config file path | `document_templates.json` || `GITHUB_TOKEN` | GitHub personal access token | Optional |
 | `GITHUB_REPO_URL` | GitHub repository URL | Optional |
 | `FLASK_SECRET_KEY` | Flask session secret | Auto-generated |
 | `CHROMA_DB_PATH` | ChromaDB storage location | `./chroma_db` |

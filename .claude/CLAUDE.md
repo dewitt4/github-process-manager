@@ -145,6 +145,7 @@ github-process-manager/
 ├── requirements.txt        # Python dependencies
 ├── .env                    # Environment variables (not in git)
 ├── .env.template           # Template for .env
+├── document_templates.json # Document template configuration (Phase 3)
 ├── start.ps1               # PowerShell startup script
 ├── start.bat               # Batch launcher
 ├── Dockerfile              # Docker container definition
@@ -400,6 +401,215 @@ Result: Responses tailored to company-specific context.
 - UI for temporary context switching
 - API for automated workflows or integrations
 
+## Document Template System (Phase 3)
+
+### Overview
+
+The application features a flexible, configurable document template system that allows customization of Word document generation through JSON configuration files and environment variables. This enables users to:
+- Customize branding (colors, logos, company names)
+- Define custom document structures
+- Support multiple document types (SOX audits, MLOps, DevOps, generic)
+- Add new templates without code changes
+
+### Configuration Variables
+
+Located in `config.py` (lines 54-60):
+
+**Environment Variables**:
+- `PROJECT_NAME` (default: "GitHub Process Manager") - Displayed in document headers
+- `COMPANY_NAME` (optional) - Added to header if provided: "Company | Project | Process Documentation"
+- `BRAND_COLOR` (default: "#4A90E2") - Hex color for headings and styling
+- `DOCUMENT_LOGO_PATH` (optional) - Path to logo image (.png, .jpg, .jpeg, .gif, .bmp)
+- `DEFAULT_TEMPLATE_TYPE` (default: "generic") - Default template selection
+- `DOCUMENT_TEMPLATES_PATH` (default: "document_templates.json") - Path to template configuration
+
+### Validation Functions
+
+**`validate_color_format(color_string)`** (config.py:110-116)
+- Validates hex color format (#RRGGBB)
+- Returns True for valid colors or empty strings
+- Uses regex pattern: `^#[0-9A-Fa-f]{6}$`
+
+**`validate_logo_path(logo_path)`** (config.py:118-131)
+- Checks if logo file exists
+- Validates image format (.png, .jpg, .jpeg, .gif, .bmp)
+- Returns True for valid paths or empty strings
+- Logs warnings for invalid paths
+
+**`get_brand_color_rgb()`** (config.py:180-183)
+- Converts hex color to RGB tuple for python-docx
+- Returns tuple: (R, G, B) for use with `RGBColor(*brand_rgb)`
+- Example: "#4A90E2" → (74, 144, 226)
+
+### Template Configuration File
+
+**document_templates.json** - JSON structure defining all document templates:
+
+```json
+{
+  "templates": {
+    "template_key": {
+      "name": "Template Display Name",
+      "description": "Template purpose",
+      "report_title": "Document Title",
+      "sections": [
+        {
+          "number": 1,
+          "title": "Section Title",
+          "key": "Section Key",
+          "description": "Section purpose"
+        }
+      ],
+      "keywords": ["keyword1", "keyword2"]
+    }
+  },
+  "default_template": "generic",
+  "version": "1.0"
+}
+```
+
+**Built-in Templates**:
+
+1. **sox_audit** - SOX Compliance & Internal Control Testing
+   - Sections: Control Objective, Risks Addressed, Testing Procedures, Test Results and Findings, Conclusion and Recommendation
+   - Keywords: sox, control, audit, compliance, internal control
+   
+2. **mlops_workflow** - Machine Learning Operations
+   - Sections: Model Overview, Data Pipeline, Training Process, Validation Results, Deployment Plan
+   - Keywords: model, mlops, machine learning, training, inference, dataset
+   
+3. **devops_pipeline** - CI/CD Pipeline Documentation
+   - Sections: Pipeline Overview, Build Steps, Test and Quality Gates, Deployment Process, Monitoring and Rollback
+   - Keywords: pipeline, ci/cd, cicd, deployment, build, release, kubernetes, docker
+   
+4. **generic** - General Purpose Documentation
+   - Sections: Overview, Key Components, Procedures, Analysis Results, Conclusion and Recommendations
+   - Keywords: (none - used as fallback)
+
+### word_generator.py Implementation
+
+**Template Loading** (lines 13-50):
+- `load_templates()` function loads JSON on module initialization
+- Global `DOCUMENT_TEMPLATES` dictionary stores all templates
+- Falls back to built-in generic template if file not found
+- Logs number of templates loaded
+
+**Section Parsing** (lines 52-90):
+- `parse_analysis_sections(analysis_text, template_type)` - Dynamic section extraction
+- Uses template configuration to build regex patterns
+- Matches numbered sections (e.g., "1. Control Objective:")
+- Returns dict with section keys and extracted content
+- Falls back to full text in first section if parsing fails
+
+**Document Generation** (lines 92-230):
+- `create_process_document(analysis_text, process_name, metadata, template_type)`
+- Template type parameter (defaults to `Config.DEFAULT_TEMPLATE_TYPE`)
+- Retrieves template from `DOCUMENT_TEMPLATES` dictionary
+- Applies branding from Config: `PROJECT_NAME`, `COMPANY_NAME`, `get_brand_color_rgb()`
+- Inserts logo from `DOCUMENT_LOGO_PATH` if configured
+- Generates sections dynamically from template configuration
+- Professional formatting: Calibri 11pt, colored headings, page numbers
+
+**Backward Compatibility** (lines 290-300):
+- `create_sox_word_document()` wrapper for legacy code
+- Calls `create_process_document()` with `template_type='sox_audit'`
+- Maintains compatibility with existing SOX-focused workflows
+
+### Usage Examples
+
+**Example 1: Custom Company Branding**
+```env
+PROJECT_NAME=Process Manager
+COMPANY_NAME=Acme Corporation
+BRAND_COLOR=#FF6600
+DOCUMENT_LOGO_PATH=./assets/acme_logo.png
+DEFAULT_TEMPLATE_TYPE=sox_audit
+```
+Result: Documents show "Acme Corporation | Process Manager | Process Documentation" header with orange branding and company logo.
+
+**Example 2: Adding Custom Template**
+Edit `document_templates.json`:
+```json
+{
+  "templates": {
+    "security_review": {
+      "name": "Security Review Report",
+      "report_title": "Security Assessment",
+      "sections": [
+        {"number": 1, "title": "Scope", "key": "Scope"},
+        {"number": 2, "title": "Findings", "key": "Findings"},
+        {"number": 3, "title": "Recommendations", "key": "Recommendations"}
+      ],
+      "keywords": ["security", "vulnerability", "penetration"]
+    }
+  }
+}
+```
+
+Set in `.env`:
+```env
+DEFAULT_TEMPLATE_TYPE=security_review
+```
+
+**Example 3: Programmatic Template Selection**
+```python
+from word_generator import create_process_document
+
+filename = create_process_document(
+    analysis_text="...",
+    process_name="Model Deployment",
+    template_type="mlops_workflow",
+    metadata={"timestamp": "2026-02-07", "query": "Deploy model to production"}
+)
+```
+
+### Integration Points
+
+**config.py**:
+- Loads and validates all template configuration
+- Provides `get_brand_color_rgb()` helper for Word document colors
+- Validates logo paths and color formats on startup
+
+**word_generator.py**:
+- Imports `Config` for branding values
+- Loads `document_templates.json` on module initialization
+- Dynamically generates sections based on template type
+
+**app.py** (future enhancement):
+- Could pass `template_type` parameter from frontend selection
+- Currently uses `Config.DEFAULT_TEMPLATE_TYPE`
+
+**gemini_client.py**:
+- Query type detection (`_detect_query_type()`) could inform template selection
+- Keywords from templates could be used for auto-detection
+
+### Best Practices
+
+**Template Design**:
+- Use 3-7 sections for optimal readability
+- Keep section titles concise (2-5 words)
+- Choose unique section keys for regex matching
+- Add descriptive keywords for auto-detection
+
+**Branding Configuration**:
+- Use web-safe colors (#RRGGBB format)
+- Logo images should be PNG or JPG, ~500px wide
+- Keep company names under 30 characters
+- Test brand colors for readability (contrast with white background)
+
+**Custom Templates**:
+- Add to `document_templates.json` (no code changes needed)
+- Follow existing JSON structure
+- Set `DEFAULT_TEMPLATE_TYPE` in `.env` to activate
+- Use meaningful template keys (lowercase, underscores)
+
+**File Organization**:
+- Keep logos in dedicated `assets/` folder
+- Use descriptive filenames: `company_logo.png`
+- Update `DOCUMENT_LOGO_PATH` with absolute or relative paths
+- Commit `document_templates.json` to version control
+- Do NOT commit `.env` (contains API keys)
+
 ## Query Type Detection
 
 The system automatically detects query type and applies appropriate structured response format:
@@ -417,11 +627,12 @@ The system automatically detects query type and applies appropriate structured r
 2. **User Action**: "📄 Download Word Report" button appears
 3. **API Call**: `POST /api/generate-word-report` with analysis text
 4. **Document Creation**: `word_generator.py:create_process_document()`
-   - Parse 5 sections from response text
+   - Parse sections from response text using template configuration
    - Apply professional formatting (Calibri, proper spacing)
-   - Add header: "GitHub Process Manager | Process Documentation"
-   - Use brand color: `#4A90E2` (RGB 74, 144, 226)
-   - Generate metadata table (timestamp, query, report type)
+   - Add header with branding: "{COMPANY_NAME} | {PROJECT_NAME} | Process Documentation"
+   - Use brand color from Config (default: #4A90E2)
+   - Insert logo if configured in DOCUMENT_LOGO_PATH
+   - Generate metadata table (timestamp, query, report type from template)
    - Add page footer with page numbers
 5. **Storage**: Save to `generated_reports/Process_Analysis_<name>_<timestamp>.docx`
 6. **Download**: Return download URL to user
@@ -710,10 +921,11 @@ Check `app.log` for detailed error messages and stack traces.
 - [x] Multi-template support (SOX, MLOps, DevOps, Generic)
 - [x] Word document generation
 - [x] GitHub Actions workflow triggers
+- [x] AI system prompt customization (6 templates + custom)
+- [x] Template configuration via JSON files (Phase 3)
+- [x] Logo upload and customization (Phase 3)
+- [x] Company branding configuration (Phase 3)
 - [ ] Custom template editor in UI
-- [ ] Template configuration via JSON files
-- [ ] Logo upload and customization
-- [ ] Company branding configuration
 - [ ] Integration tests with Docker
 - [ ] CI/CD pipeline for Docker builds
 - [ ] Multi-architecture Docker images (ARM64)
@@ -730,5 +942,7 @@ Check `app.log` for detailed error messages and stack traces.
 **Last Updated**: February 7, 2026  
 **Python Version**: 3.8+ (3.11 recommended)  
 **Docker**: ✅ Fully Containerized  
+**Phase 3**: ✅ Document Template System Complete  
 **Status**: ✅ Fully Production Ready  
+**Project**: GitHub Process Manager (formerly "Local AI RAG Chatbot")  
 **Project**: GitHub Process Manager (formerly "Local AI RAG Chatbot")
