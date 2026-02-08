@@ -14,6 +14,7 @@ This is a lightweight, local AI-powered assistant that combines Retrieval-Augmen
 - **Document Processing**: python-docx, PyPDF2
 - **Document Generation**: python-docx (Word reports)
 - **Frontend**: HTML, CSS, JavaScript (vanilla)
+- **Containerization**: Docker, Docker Compose, VS Code Dev Containers
 
 ### Core Components
 
@@ -96,6 +97,31 @@ pip install -r requirements.txt
 ```
 
 ### Running the Application
+
+**Option 1: Docker (Recommended)**
+```bash
+# Copy environment template
+cp .env.template .env
+# Edit .env with your API keys
+
+# Start with Docker Compose
+docker-compose up -d
+
+# View logs
+docker-compose logs -f app
+
+# Access at http://localhost:5000
+
+# Stop
+docker-compose down
+```
+
+**Option 2: VS Code Dev Container**
+1. Install "Remote - Containers" extension
+2. Press F1 → "Remote-Containers: Reopen in Container"
+3. Environment automatically configured
+
+**Option 3: Local Python (Manual)**
 ```bash
 # Quick start (automated)
 .\start.ps1
@@ -121,6 +147,14 @@ github-process-manager/
 ├── .env.template           # Template for .env
 ├── start.ps1               # PowerShell startup script
 ├── start.bat               # Batch launcher
+├── Dockerfile              # Docker container definition
+├── .dockerignore           # Docker build exclusions
+├── docker-compose.yml      # Development Docker setup
+├── docker-compose.prod.yml # Production Docker setup
+├── Makefile                # Docker convenience commands
+├── README.docker.md        # Docker documentation
+├── .devcontainer/
+│   └── devcontainer.json   # VS Code Remote Containers config
 ├── templates/              # Jinja2 templates
 │   ├── base.html           # Base template ("GitHub Process Manager" header)
 │   ├── index.html          # Chat interface
@@ -275,6 +309,97 @@ GitHub token needs:
 - `repo` - Full repository access
 - `workflow` - Trigger GitHub Actions
 
+## Docker Containerization
+
+### Docker Setup
+
+**Dockerfile Features**:
+- Based on `python:3.11-slim` for small image size
+- Multi-stage optimized build
+- Health checks every 30s
+- Auto-creates necessary directories
+- Non-root user in production
+
+**Docker Compose (Development)**:
+- Hot reload with code volume mounting
+- Named volumes for data persistence (chroma_db, uploads, reports)
+- Port forwarding: 5000:5000
+- Auto-restart on failure
+- Excludes virtual env from host machine
+
+**Docker Compose (Production)**:
+- No code mounting (immutable containers)
+- Production environment variables
+- Always restart policy
+- Optimized for stability
+
+### Makefile Commands
+
+Run `make help` to see all commands:
+
+```bash
+make setup          # Create .env from template
+make build          # Build Docker image
+make up             # Start development environment
+make up-prod        # Start production environment
+make down           # Stop containers
+make logs           # View application logs
+make shell          # Access container bash shell
+make clean          # Remove containers, volumes, images
+make rebuild        # Rebuild and restart
+make restart        # Restart application
+make status         # Show container status
+```
+
+### VS Code Dev Container
+
+**Features**:
+- Automatic Python 3.11 environment setup
+- Pre-installed VS Code extensions:
+  - Python
+  - Pylance
+  - autopep8
+  - ESLint
+  - GitLens
+  - GitHub Pull Requests
+  - Code Spell Checker
+- Git and GitHub CLI pre-installed
+- Auto-formatting on save
+- Integrated debugging
+
+**Usage**:
+1. Install "Remote - Containers" extension in VS Code
+2. Open project folder
+3. Press F1 → "Remote-Containers: Reopen in Container"
+4. Wait for container build (first time only)
+5. Start coding with fully configured environment
+
+### Volume Persistence
+
+Docker uses named volumes to persist data across container restarts:
+
+- **chroma_data**: Vector database storage
+- **uploads_data**: Temporary file uploads
+- **reports_data**: Generated Word documents
+
+Data persists even when containers are stopped or removed.
+
+### Health Checks
+
+Built-in health monitoring:
+- Checks `/health` endpoint every 30s
+- 10s timeout
+- 3 retries before marking unhealthy
+- 5s startup grace period (10s in production)
+
+### Security Considerations
+
+- `.env` file excluded from Docker build (`.dockerignore`)
+- Use Docker secrets in production for sensitive data
+- Container runs as non-root user in production
+- Minimal base image reduces attack surface
+- Health checks ensure service availability
+
 ## Common Development Tasks
 
 ### Adding a New Template Type
@@ -388,7 +513,9 @@ Check `app.log` for detailed error messages and stack traces.
 - [ ] Markdown rendering in chat responses
 - [ ] Multiple RAG collections (project-based)
 - [ ] Real-time GitHub webhook integration
-- [ ] Docker containerization
+- [x] Docker containerization
+- [x] VS Code Dev Container support
+- [ ] Kubernetes deployment manifests
 - [ ] Authentication/multi-user support
 - [ ] Streaming responses from Gemini
 - [ ] Code syntax highlighting in responses
@@ -399,6 +526,9 @@ Check `app.log` for detailed error messages and stack traces.
 - [ ] Template configuration via JSON files
 - [ ] Logo upload and customization
 - [ ] Company branding configuration
+- [ ] Integration tests with Docker
+- [ ] CI/CD pipeline for Docker builds
+- [ ] Multi-architecture Docker images (ARM64)
 
 ## Links & Resources
 
@@ -410,6 +540,7 @@ Check `app.log` for detailed error messages and stack traces.
 ---
 
 **Last Updated**: February 7, 2026  
-**Python Version**: 3.8+  
+**Python Version**: 3.8+ (3.11 recommended)  
+**Docker**: ✅ Fully Containerized  
 **Status**: ✅ Fully Production Ready  
 **Project**: GitHub Process Manager (formerly "Local AI RAG Chatbot")
