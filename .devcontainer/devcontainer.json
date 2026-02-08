@@ -1,0 +1,66 @@
+{
+  "name": "GitHub Process Manager",
+  "dockerComposeFile": "../docker-compose.yml",
+  "service": "app",
+  "workspaceFolder": "/app",
+
+  // Configure VS Code settings
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.linting.enabled": true,
+        "python.linting.pylintEnabled": true,
+        "python.formatting.autopep8Path": "/usr/local/bin/autopep8",
+        "python.formatting.provider": "autopep8",
+        "python.linting.pylintPath": "/usr/local/bin/pylint",
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+          "source.organizeImports": "explicit"
+        },
+        "files.exclude": {
+          "**/__pycache__": true,
+          "**/*.pyc": true
+        }
+      },
+      
+      // Install VS Code extensions
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-python.autopep8",
+        "esbenp.prettier-vscode",
+        "dbaeumer.vscode-eslint",
+        "eamodio.gitlens",
+        "github.vscode-pull-request-github",
+        "streetsidesoftware.code-spell-checker",
+        "visualstudioexptteam.vscodeintellicode",
+        "ms-vscode.makefile-tools"
+      ]
+    }
+  },
+
+  // Forward ports
+  "forwardPorts": [5000],
+  "portsAttributes": {
+    "5000": {
+      "label": "Flask App",
+      "onAutoForward": "notify"
+    }
+  },
+
+  // Run commands after creating the container
+  "postCreateCommand": "pip install -r requirements.txt",
+
+  // Use 'postStartCommand' to run commands each time the container starts
+  "postStartCommand": "python --version",
+
+  // Comment out to connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root
+  "remoteUser": "root",
+
+  // Features to add to the dev container
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  }
+}

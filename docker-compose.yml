@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: github-process-manager
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=development
+      - FLASK_DEBUG=True
+    env_file:
+      - .env
+    volumes:
+      # Mount code for development (hot reload)
+      - .:/app
+      # Persist database
+      - chroma_data:/app/chroma_db
+      # Persist uploads
+      - uploads_data:/app/uploads
+      # Persist generated reports
+      - reports_data:/app/generated_reports
+      # Exclude virtual env from host
+      - /app/venv
+      - /app/venv311
+      - /app/.venv
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  chroma_data:
+  uploads_data:
+  reports_data:

@@ -116,7 +116,52 @@ python app.py
 
 The application will be available at: **http://localhost:5000**
 
-## 📖 Usage Guide
+## � Docker Deployment (Recommended)
+
+For a consistent, isolated environment, use Docker:
+
+### Quick Start with Docker Compose
+
+```bash
+# 1. Configure environment
+cp .env.template .env
+# Edit .env with your API keys
+
+# 2. Start the application
+docker-compose up -d
+
+# 3. View logs
+docker-compose logs -f app
+
+# 4. Access at http://localhost:5000
+```
+
+### Development with VS Code Dev Container
+
+1. Install [Remote - Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) extension
+2. Open project in VS Code
+3. Press `F1` → "Remote-Containers: Reopen in Container"
+4. Environment is automatically configured with all dependencies
+
+### Docker Commands
+
+```bash
+# Stop the application
+docker-compose down
+
+# Rebuild after changes
+docker-compose up -d --build
+
+# Production mode
+docker-compose -f docker-compose.prod.yml up -d
+
+# View container shell
+docker-compose exec app /bin/bash
+```
+
+**For detailed Docker setup**, see [README.docker.md](README.docker.md)
+
+## �📖 Usage Guide
 
 ### Upload Reference Documents
 
