@@ -259,6 +259,39 @@
         </div>
     </div>
 
+    <!-- MLOps Features Section (Optional) -->
+    <div class="settings-section" id="mlops-section" style="display: none;">
+        <h3>📊 MLOps Configuration</h3>
+
+        <p class="info-text">Machine Learning Operations workflow features and templates.</p>
+
+        <div class="info-card">
+            <div class="info-item">
+                <span class="info-label">MLOps Features:</span>
+                <span class="info-value" id="mlops-enabled-status">Checking...</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Templates Available:</span>
+                <span class="info-value" id="mlops-templates-count">-</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Workflows Available:</span>
+                <span class="info-value" id="mlops-workflows-count">-</span>
+            </div>
+        </div>
+
+        <div id="mlops-templates-list" style="margin-top: 1rem;">
+            <h4>Available MLOps Templates</h4>
+            <div id="mlops-templates-container" class="info-card">
+                <p class="info-text">Loading templates...</p>
+            </div>
+        </div>
+
+        <div class="info-card" style="margin-top: 1rem; background-color: #e7f3ff; border-left: 4px solid #4A90E2;">
+            <p style="margin: 0;"><strong>💡 Tip:</strong> Upload MLOps template files from <code>templates/mlops/</code> as RAG documents for ML-specific guidance. Use GitHub Actions workflows for automated validation and deployment documentation.</p>
+        </div>
+    </div>
+
     <!-- System Information -->
     <div class="settings-section">
         <h3>ℹ️ System Information</h3>
@@ -928,6 +961,72 @@
 
     // Load document config on page load
     loadDocConfig();
+
+    // ============================================
+    // MLOps-specific JavaScript (Isolated Section)
+    // ============================================
+    
+    const mlopsSection = document.getElementById('mlops-section');
+    const mlopsEnabledStatus = document.getElementById('mlops-enabled-status');
+    const mlopsTemplatesCount = document.getElementById('mlops-templates-count');
+    const mlopsWorkflowsCount = document.getElementById('mlops-workflows-count');
+    const mlopsTemplatesContainer = document.getElementById('mlops-templates-container');
+
+    // Check MLOps status and show section if enabled
+    async function checkMLOpsStatus() {
+        try {
+            const response = await fetch('/api/mlops/status');
+            const data = await response.json();
+
+            if (response.ok && data.enabled) {
+                // MLOps features are enabled, show the section
+                mlopsSection.style.display = 'block';
+                mlopsEnabledStatus.textContent = '✅ Enabled';
+                mlopsTemplatesCount.textContent = `${data.template_count} templates`;
+                mlopsWorkflowsCount.textContent = `${data.workflow_count} workflows`;
+
+                // Load templates list
+                await loadMLOpsTemplates();
+            } else {
+                // MLOps not enabled, keep section hidden
+                mlopsSection.style.display = 'none';
+            }
+        } catch (error) {
+            console.log('MLOps features not available or not enabled');
+            mlopsSection.style.display = 'none';
+        }
+    }
+
+    // Load MLOps templates list
+    async function loadMLOpsTemplates() {
+        try {
+            const response = await fetch('/api/mlops/templates');
+            const data = await response.json();
+
+            if (response.ok && data.templates && data.templates.length > 0) {
+                let html = '<ul style="list-style: none; padding: 0; margin: 0;">';
+                data.templates.forEach(template => {
+                    html += `
+                        <li style="padding: 0.5rem 0; border-bottom: 1px solid #eee;">
+                            <strong>${template.name}</strong>
+                            <span style="float: right; color: #666;">${template.size_kb} KB</span>
+                        </li>
+                    `;
+                });
+                html += '</ul>';
+                mlopsTemplatesContainer.innerHTML = html;
+            } else {
+                mlopsTemplatesContainer.innerHTML = '<p class="info-text">No MLOps templates found.</p>';
+            }
+        } catch (error) {
+            mlopsTemplatesContainer.innerHTML = '<p class="warning-text">Error loading templates</p>';
+        }
+    }
+
+    // Initialize MLOps section on page load
+    checkMLOpsStatus();
+    
+    // End MLOps Section
 
 </script>
 {% endblock %}

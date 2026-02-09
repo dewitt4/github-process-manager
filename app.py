@@ -716,6 +716,192 @@ def check_workflow_artifacts(run_id):
         return jsonify({'error': str(e)}), 500
 
 
+# ============================================
+# MLOps-Specific Endpoints (Isolated Section)
+# ============================================
+
+@app.route('/api/mlops/status')
+def mlops_status():
+    """
+    Check if MLOps features are enabled - isolated endpoint.
+    
+    Returns:
+        JSON with MLOps feature status and configuration
+    """
+    try:
+        import os
+        
+        mlops_enabled = Config.MLOPS_FEATURES_ENABLED
+        templates_exist = os.path.exists(Config.MLOPS_TEMPLATES_DIR)
+        workflows_exist = os.path.exists(Config.MLOPS_WORKFLOWS_DIR)
+        
+        # Count available templates
+        template_count = 0
+        workflow_count = 0
+        
+        if templates_exist:
+            template_files = os.listdir(Config.MLOPS_TEMPLATES_DIR)
+            template_count = len([f for f in template_files if f.endswith('.md')])
+        
+        if workflows_exist:
+            workflow_files = os.listdir(Config.MLOPS_WORKFLOWS_DIR)
+            workflow_count = len([f for f in workflow_files if f.endswith('.yml')])
+        
+        return jsonify({
+            'enabled': mlops_enabled,
+            'templates_dir': Config.MLOPS_TEMPLATES_DIR,
+            'templates_available': templates_exist,
+            'template_count': template_count,
+            'workflows_dir': Config.MLOPS_WORKFLOWS_DIR,
+            'workflows_available': workflows_exist,
+            'workflow_count': workflow_count
+        })
+        
+    except Exception as e:
+        logger.error(f"Error checking MLOps status: {e}")
+        return jsonify({'error': str(e), 'enabled': False}), 500
+
+
+@app.route('/api/mlops/parse-metrics', methods=['POST'])
+def parse_ml_metrics_endpoint():
+    """
+    Parse ML metrics JSON - optional MLOps feature.
+    
+    Request body:
+        {
+            "metrics": "{\"accuracy\": 0.95, \"f1\": 0.93}"
+        }
+    
+    Returns:
+        JSON with parsed and formatted metrics
+    """
+    try:
+        if not Config.MLOPS_FEATURES_ENABLED:
+            return jsonify({'error': 'MLOps features not enabled. Set MLOPS_FEATURES_ENABLED=true in .env'}), 403
+        
+        # Import only if used (lazy loading for isolation)
+        from mlops_helpers import parse_ml_metrics, format_ml_metrics_for_document, get_metrics_summary
+        
+        data = request.get_json()
+        if not data or 'metrics' not in data:
+            return jsonify({'error': 'Missing metrics in request body'}), 400
+        
+        metrics_input = data['metrics']
+        
+        # Parse metrics
+        parsed = parse_ml_metrics(metrics_input)
+        
+        # Format for document
+        formatted = format_ml_metrics_for_document(parsed)
+        
+        # Get summary
+        summary = get_metrics_summary(parsed)
+        
+        return jsonify({
+            'success': True,
+            'parsed_metrics': parsed,
+            'formatted_text': formatted,
+            'summary': summary
+        })
+        
+    except Exception as e:
+        logger.error(f"Error parsing ML metrics: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/mlops/validate-metrics', methods=['POST'])
+def validate_ml_metrics_endpoint():
+    """
+    Validate ML metrics against schema - optional MLOps feature.
+    
+    Request body:
+        {
+            "metrics": {"accuracy": 0.95, "f1_score": 0.93},
+            "required": ["accuracy", "f1_score"]
+        }
+    
+    Returns:
+        JSON with validation results
+    """
+    try:
+        if not Config.MLOPS_FEATURES_ENABLED:
+            return jsonify({'error': 'MLOps features not enabled'}), 403
+        
+        # Import only if used
+        from mlops_helpers import validate_metrics_schema, calculate_model_score
+        
+        data = request.get_json()
+        if not data or 'metrics' not in data:
+            return jsonify({'error': 'Missing metrics in request body'}), 400
+        
+        metrics = data['metrics']
+        required = data.get('required', ['accuracy'])
+        
+        # Validate schema
+        is_valid, missing = validate_metrics_schema(metrics, required)
+        
+        # Calculate overall score
+        score = calculate_model_score(metrics)
+        
+        return jsonify({
+            'success': True,
+            'valid': is_valid,
+            'missing_metrics': missing,
+            'overall_score': score,
+            'metrics': metrics
+        })
+        
+    except Exception as e:
+        logger.error(f"Error validating ML metrics: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/mlops/templates')
+def mlops_templates_list():
+    """
+    List available MLOps documentation templates.
+    
+    Returns:
+        JSON with list of available MLOps templates
+    """
+    try:
+        import os
+        
+        if not os.path.exists(Config.MLOPS_TEMPLATES_DIR):
+            return jsonify({
+                'templates': [],
+                'count': 0,
+                'message': 'MLOps templates directory not found'
+            })
+        
+        template_files = os.listdir(Config.MLOPS_TEMPLATES_DIR)
+        md_files = [f for f in template_files if f.endswith('.md')]
+        
+        templates = []
+        for filename in md_files:
+            filepath = os.path.join(Config.MLOPS_TEMPLATES_DIR, filename)
+            # Get file size
+            size = os.path.getsize(filepath)
+            templates.append({
+                'name': filename,
+                'path': filepath,
+                'size_kb': round(size / 1024, 2)
+            })
+        
+        return jsonify({
+            'templates': templates,
+            'count': len(templates),
+            'directory': Config.MLOPS_TEMPLATES_DIR
+        })
+        
+    except Exception as e:
+        logger.error(f"Error listing MLOps templates: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+# End MLOps Section
+
+
 if __name__ == '__main__':
     app.run(
         debug=Config.DEBUG,

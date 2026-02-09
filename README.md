@@ -474,6 +474,9 @@ Edit `config.py` or set environment variables:
 | `CHUNK_SIZE` | Characters per document chunk | 800 |
 | `CHUNK_OVERLAP` | Overlap between chunks | 200 |
 | `TOP_K_RESULTS` | RAG chunks to retrieve | 3 |
+| `MLOPS_FEATURES_ENABLED` | Enable MLOps features | `false` |
+| `MLOPS_TEMPLATES_DIR` | MLOps templates directory | `templates/mlops` |
+| `MLOPS_WORKFLOWS_DIR` | MLOps workflows directory | `.github/workflows/mlops` |
 
 ## 🛠️ API Endpoints
 
@@ -498,6 +501,12 @@ Edit `config.py` or set environment variables:
 - `GET /api/prompts/current` - Get current active prompt
 - `POST /api/prompts/update` - Update system prompt (session-based)
 - `POST /api/prompts/reset` - Reset to default prompt
+
+### MLOps (Optional - requires MLOPS_FEATURES_ENABLED=true)
+- `GET /api/mlops/status` - Check MLOps feature availability and configuration
+- `POST /api/mlops/parse-metrics` - Parse and format ML metrics JSON
+- `POST /api/mlops/validate-metrics` - Validate ML metrics against schema
+- `GET /api/mlops/templates` - List available MLOps documentation templates
 
 ### System
 - `GET /health` - Health check endpoint

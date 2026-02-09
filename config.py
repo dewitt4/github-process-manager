@@ -59,6 +59,11 @@ class Config:
     DEFAULT_TEMPLATE_TYPE = os.getenv('DEFAULT_TEMPLATE_TYPE', 'generic')
     DOCUMENT_TEMPLATES_PATH = os.getenv('DOCUMENT_TEMPLATES_PATH', 'document_templates.json')
     
+    # MLOps-specific configuration (optional, isolated from core features)
+    MLOPS_FEATURES_ENABLED = os.getenv('MLOPS_FEATURES_ENABLED', 'false').lower() == 'true'
+    MLOPS_TEMPLATES_DIR = os.getenv('MLOPS_TEMPLATES_DIR', 'templates/mlops')
+    MLOPS_WORKFLOWS_DIR = os.getenv('MLOPS_WORKFLOWS_DIR', '.github/workflows/mlops')
+    
     # Pre-defined System Prompt Templates
     SYSTEM_PROMPTS = {
         'default': (

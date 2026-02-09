@@ -832,6 +832,509 @@ Built-in health monitoring:
 
 ## Backward Compatibility
 
+The application maintains backward compatibility through:
+
+1. **Legacy function wrappers**: `create_sox_word_document()` wraps `create_process_document()`
+2. **Template system**: New templates added without modifying existing code
+3. **Configuration defaults**: Safe fallback values for all new config options
+4. **Feature flags**: Optional features can be disabled (e.g., MLOPS_FEATURES_ENABLED)
+
+**Breaking Changes to Avoid**:
+- Don't remove SOX template or keywords
+- Don't change API endpoint URLs
+- Don't modify existing database schema
+- Don't change file upload formats
+
+## MLOps Features (Phase 4 - Isolated Implementation)
+
+### Overview
+
+Complete MLOps (Machine Learning Operations) support added as an isolated, optional feature set with zero impact on existing functionality. All MLOps features are controlled by the `MLOPS_FEATURES_ENABLED` flag and implemented in separate modules.
+
+### MLOps Documentation Templates
+
+**Location**: `templates/mlops/`
+
+Four comprehensive markdown templates for ML workflow documentation:
+
+#### 1. mlops_guide.md (10 sections, ~50 KB)
+Complete ML lifecycle best practices guide:
+- Model development and version control
+- Experiment tracking (MLflow, Weights & Biases, Neptune, TensorBoard)
+- Training best practices and reproducibility
+- Model validation strategies (metrics, testing, fairness analysis)
+- Deployment strategies (Blue-Green, Canary, Rolling, Shadow)
+- Monitoring and observability (drift detection, alerting)
+- Model retraining triggers and workflows
+- Security and compliance (model encryption, PII protection)
+- Common pitfalls and best practices
+
+#### 2. model_validation_template.md (11 sections, ~25 KB)
+Structured validation report template:
+- Executive summary with validation status
+- Model overview and business context
+- Validation data description and quality metrics
+- Validation methodology (unit, integration, performance, regression)
+- Performance metrics (classification, regression, latency, throughput)
+- Comparison with baseline models
+- Bias and fairness analysis across demographic groups
+- Failure pattern analysis and root cause investigation
+- Risk assessment and mitigation strategies
+- Deployment recommendations and requirements checklist
+- Approval sign-off section
+
+#### 3. deployment_checklist.md (~40 KB)
+Comprehensive pre-deployment checklist covering:
+- Model readiness verification (validation, versioning, artifacts)
+- Documentation requirements (model card, API docs, runbook)
+- Security and compliance checks (authentication, vulnerability scanning, GDPR/HIPAA)
+- Monitoring and observability setup (alerts, dashboards, logging)
+- Testing requirements (functional, performance, integration, chaos)
+- Deployment strategy selection and configuration
+- Rollback plan and procedures
+- Data management (input validation, output format)
+- Performance optimization (quantization, auto-scaling, caching)
+- Business continuity (high availability, disaster recovery)
+- Stakeholder communication and training
+
+#### 4. monitoring_guide.md (12 sections, ~35 KB)
+Production monitoring strategies:
+- Model performance metrics tracking (accuracy, latency, throughput)
+- Data drift detection methods (K-S test, Chi-squared, PSI)
+- Prediction drift monitoring
+- Data quality monitoring (completeness, validity, consistency)
+- Infrastructure and resource monitoring
+- Error monitoring and classification
+- Alert configuration with severity levels (P0-P3)
+- Dashboard design (operations, performance, data quality)
+- Model retraining triggers (performance, drift, time-based)
+- Incident response procedures and runbooks
+- Best practices and tool recommendations
+
+**Usage as RAG Documents**:
+- Upload any of these templates to enhance ML-specific queries
+- System provides expert guidance on MLOps workflows
+- No code changes required - pure documentation
+
+### MLOps GitHub Actions Workflows
+
+**Location**: `.github/workflows/mlops/`
+
+Two isolated workflow files for automated ML documentation:
+
+#### mlops-model-validation.yml
+**Purpose**: Generate model validation reports
+
+**Manual Dispatch Inputs**:
+- `model_name` (required): Model identifier
+- `model_version` (required): Semantic version (X.Y.Z)
+- `validation_type` (choice): unit | integration | performance | regression
+- `dataset_info` (optional): Dataset description
+- `metrics_json` (optional): JSON string of metrics `{"accuracy": 0.95, "f1": 0.93}`
+
+**Process**:
+1. Sets up Python 3.11 environment
+2. Installs python-docx
+3. Generates 5-section validation report:
+   - Model Overview
+   - Data Pipeline
+   - Training Process
+   - Validation Results (with metrics parsing)
+   - Deployment Plan
+4. Applies GitHub Process Manager branding
+5. Uploads artifact: `mlops-validation-report`
+
+**Artifact Name**: `mlops-validation-{model-name}-v{version}.docx`
+
+**Validation Logic**:
+- Parses metrics JSON if provided
+- Determines validation status: PASS (accuracy >= 0.90), CONDITIONAL PASS (>= 0.85), FAIL (< 0.85)
+- Provides deployment recommendations based on metrics
+
+#### mlops-deployment-doc.yml
+**Purpose**: Generate deployment documentation
+
+**Manual Dispatch Inputs**:
+- `model_name` (required): Model to deploy
+- `model_version` (required): Version number
+- `deployment_target` (choice): staging | production | canary | development
+- `deployment_strategy` (choice): blue-green | canary | rolling | shadow
+- `deployment_config` (optional): Additional config as JSON
+
+**Process**:
+1. Sets up Python 3.11 environment
+2. Generates 5-section deployment plan:
+   - Model Overview
+   - Data Pipeline (production integration)
+   - Training Process (pre-deployment summary)
+   - Validation Results (pre-deployment status)
+   - Deployment Plan (strategy-specific steps)
+3. Includes pre-deployment checklist
+4. Provides monitoring plan and rollback procedures
+5. Uploads artifact: `mlops-deployment-docs`
+
+**Artifact Name**: `mlops-deployment-{model-name}-v{version}-{target}.docx`
+
+**Strategy-Specific Content**:
+- Canary: 10% → 50% → 100% rollout plan
+- Blue-Green: Environment switch procedure
+- Rolling: Gradual pod/instance replacement
+- Shadow: Parallel deployment for comparison
+
+**Triggering from UI**:
+1. Navigate to Settings → GitHub Actions
+2. Load workflows (new MLOps workflows appear)
+3. Click trigger on desired workflow
+4. Fill in parameters and execute
+5. Download generated document from artifacts
+
+### MLOps Helper Module
+
+**File**: `mlops_helpers.py` (standalone, isolated module)
+
+**Design Principles**:
+- No imports from app.py, gemini_client, github_client, or rag_engine
+- Only imported when MLOps features are explicitly used (lazy loading)
+- Pure utility functions with no side effects
+- Comprehensive error handling
+
+**Functions**:
+
+#### parse_ml_metrics(metrics_json: Union[str, Dict]) -> Dict
+Parse and standardize ML metrics from various formats.
+
+**Supported Input Formats**:
+- JSON string: `'{"accuracy": 0.95, "f1_score": 0.93}'`
+- Python dict: `{"accuracy": 0.95}`
+- MLflow format: `{"metrics.accuracy": 0.95}`
+
+**Standardized Output Metrics**:
+- Classification: accuracy, precision, recall, f1_score, auc_roc
+- Regression: mae, rmse, r2_score
+- Training: loss
+- Custom metrics: preserved with normalized names
+
+**Key Normalization**:
+- Case-insensitive matching
+- Handles aliases: `acc` → `accuracy`, `f1` → `f1_score`
+- Returns `'N/A'` for missing values
+
+#### format_ml_metrics_for_document(metrics: Dict) -> str
+Convert metrics dict to formatted Markdown for Word documents.
+
+**Output Example**:
+```
+**Model Performance Metrics:**
+
+• Accuracy: 0.9500
+• Precision: 0.9400
+• Recall: 0.9300
+• F1 Score: 0.9350
+```
+
+**Features**:
+- Ordered presentation (accuracy first, then precision/recall/f1)
+- Formatted floating-point numbers (4 decimal places)
+- Skips 'N/A' values
+- Capitalizes metric names
+- Includes custom metrics at end
+
+#### validate_metrics_schema(metrics: Dict, required_metrics: Optional[List[str]]) -> tuple[bool, List[str]]
+Validate that required metrics are present.
+
+**Parameters**:
+- `metrics`: Dictionary of metric values
+- `required_metrics`: List of required metric names (default: `['accuracy']`)
+
+**Returns**:
+- `(is_valid: bool, missing_metrics: List[str])`
+
+**Example**:
+```python
+valid, missing = validate_metrics_schema(
+    {"accuracy": 0.95}, 
+    ["accuracy", "f1_score"]
+)
+# Returns: (False, ['f1_score'])
+```
+
+#### calculate_model_score(metrics: Dict, weights: Optional[Dict[str, float]]) -> float
+Calculate weighted model score from multiple metrics.
+
+**Default Weights**:
+```python
+{
+    'accuracy': 0.4,
+    'precision': 0.2,
+    'recall': 0.2,
+    'f1_score': 0.2
+}
+```
+
+**Returns**: Weighted score between 0.0 and 1.0
+
+**Use Case**: Single-number model comparison across multiple metrics
+
+#### get_metrics_summary(metrics: Dict) -> str
+Generate human-readable summary of model performance.
+
+**Output Examples**:
+- "Model shows excellent accuracy (95.00%), strong F1 score (0.930), well-balanced precision and recall."
+- "Model shows acceptable accuracy (87.00%), moderate F1 score (0.850)."
+
+**Logic**:
+- Accuracy: >= 0.95 (excellent), >= 0.90 (good), >= 0.85 (acceptable), < 0.85 (low)
+- F1 score: >= 0.90 (strong), >= 0.80 (moderate)
+- Precision/Recall: Checks balance (< 5% difference = balanced)
+
+#### export_metrics_to_mlflow_format(metrics: Dict, run_name: str) -> Dict
+Convert metrics to MLflow-compatible format for experiment tracking integration.
+
+**Output Format**:
+```json
+{
+  "run_name": "model_run",
+  "metrics": {
+    "metrics.accuracy": 0.95,
+    "metrics.f1_score": 0.93
+  },
+  "params": {},
+  "tags": {}
+}
+```
+
+### MLOps API Endpoints
+
+**Section Marker**: `# MLOps-Specific Endpoints (Isolated Section)` in app.py
+
+All endpoints protected by feature flag check and isolated from core functionality.
+
+#### GET /api/mlops/status
+Check MLOps feature availability and configuration.
+
+**Response**:
+```json
+{
+  "enabled": true,
+  "templates_dir": "templates/mlops",
+  "templates_available": true,
+  "template_count": 4,
+  "workflows_dir": ".github/workflows/mlops",
+  "workflows_available": true,
+  "workflow_count": 2
+}
+```
+
+**Use Case**: Frontend checks if MLOps section should be displayed
+
+#### POST /api/mlops/parse-metrics
+Parse and format ML metrics JSON.
+
+**Request**:
+```json
+{
+  "metrics": "{\"accuracy\": 0.95, \"f1\": 0.93, \"precision\": 0.94}"
+}
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "parsed_metrics": {
+    "accuracy": 0.95,
+    "f1_score": 0.93,
+    "precision": 0.94,
+    "recall": "N/A",
+    "auc_roc": "N/A",
+    "loss": "N/A"
+  },
+  "formatted_text": "**Model Performance Metrics:**\n\n• Accuracy: 0.9500\n...",
+  "summary": "Model shows excellent accuracy (95.00%), strong F1 score (0.930)..."
+}
+```
+
+**Features**:
+- Lazy imports mlops_helpers (only loaded when endpoint called)
+- Feature flag protection (403 if not enabled)
+- Comprehensive error handling
+
+#### POST /api/mlops/validate-metrics
+Validate ML metrics against schema.
+
+**Request**:
+```json
+{
+  "metrics": {"accuracy": 0.95, "f1_score": 0.93},
+  "required": ["accuracy", "f1_score"]
+}
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "valid": true,
+  "missing_metrics": [],
+  "overall_score": 0.94,
+  "metrics": {"accuracy": 0.95, "f1_score": 0.93}
+}
+```
+
+**Use Case**: Pre-deployment validation checks
+
+#### GET /api/mlops/templates
+List available MLOps documentation templates.
+
+**Response**:
+```json
+{
+  "templates": [
+    {
+      "name": "mlops_guide.md",
+      "path": "templates/mlops/mlops_guide.md",
+      "size_kb": 51.23
+    },
+    {
+      "name": "model_validation_template.md",
+      "path": "templates/mlops/model_validation_template.md",
+      "size_kb": 24.67
+    },
+    ...
+  ],
+  "count": 4,
+  "directory": "templates/mlops"
+}
+```
+
+**Use Case**: Settings UI displays available templates with sizes
+
+### MLOps Configuration
+
+**Environment Variables** (`.env.template`):
+```env
+## MLOps Configuration (Optional - for ML workflow features)
+# Enable or disable MLOps-specific features
+MLOPS_FEATURES_ENABLED=false
+
+# Directory containing MLOps documentation templates
+MLOPS_TEMPLATES_DIR=templates/mlops
+
+# Directory containing MLOps GitHub Actions workflows
+MLOPS_WORKFLOWS_DIR=.github/workflows/mlops
+```
+
+**Config Class** (`config.py`):
+```python
+# MLOps-specific configuration (optional, isolated from core features)
+MLOPS_FEATURES_ENABLED = os.getenv('MLOPS_FEATURES_ENABLED', 'false').lower() == 'true'
+MLOPS_TEMPLATES_DIR = os.getenv('MLOPS_TEMPLATES_DIR', 'templates/mlops')
+MLOPS_WORKFLOWS_DIR = os.getenv('MLOPS_WORKFLOWS_DIR', '.github/workflows/mlops')
+```
+
+**Default State**: Disabled (`false`) - no impact on existing functionality
+
+### MLOps Settings UI Section
+
+**Location**: `templates/settings.html`
+
+**Dynamic Section** (only visible when `MLOPS_FEATURES_ENABLED=true`):
+
+**Displays**:
+- MLOps feature status (Enabled/Disabled)
+- Template count (number of .md files in templates/mlops/)
+- Workflow count (number of .yml files in .github/workflows/mlops/)
+- List of available template files with sizes
+- Helpful tip about uploading templates as RAG documents
+
+**JavaScript**:
+- `checkMLOpsStatus()`: Calls `/api/mlops/status` endpoint
+- `loadMLOpsTemplates()`: Calls `/api/mlops/templates` endpoint
+- Automatically hides section if features are disabled
+- No interference with existing UI elements
+
+**Implementation**:
+```javascript
+// Isolated JavaScript section
+async function checkMLOpsStatus() {
+    const response = await fetch('/api/mlops/status');
+    if (response.ok && data.enabled) {
+        mlopsSection.style.display = 'block';
+        // Load and display template info
+    } else {
+        mlopsSection.style.display = 'none';
+    }
+}
+```
+
+### MLOps Isolation Guarantees
+
+✅ **Zero Breaking Changes**:
+- No modifications to existing Python modules (app.py, gemini_client.py, github_client.py, etc.)
+- No changes to existing HTML/CSS/JavaScript outside isolated sections
+- No modifications to existing database schema
+- No changes to existing API routes
+- All existing templates continue working
+
+✅ **Complete Feature Isolation**:
+- Separate directory: `templates/mlops/`
+- Separate workflows: `.github/workflows/mlops/`
+- Standalone module: `mlops_helpers.py`
+- Feature flag: `MLOPS_FEATURES_ENABLED` (default: false)
+- Lazy loading: mlops_helpers only imported when endpoints called
+- UI sections: Hidden when disabled
+
+✅ **Easy Rollback**:
+To completely remove MLOps features:
+1. Set `MLOPS_FEATURES_ENABLED=false` in `.env` (instant disable)
+2. Or delete files:
+   - `mlops_helpers.py`
+   - `templates/mlops/` directory
+   - `.github/workflows/mlops/` directory
+3. Remove MLOps sections from:
+   - `app.py` (lines marked with "MLOps-Specific Endpoints")
+   - `templates/settings.html` (MLOps section)
+
+**Result**: Application returns to pre-MLOps state with zero residual code
+
+### MLOps Usage Examples
+
+**Example 1: Upload MLOps Templates as RAG Documents**
+```
+1. Navigate to Chat page
+2. Upload templates/mlops/mlops_guide.md
+3. Ask: "What metrics should I track for a classification model?"
+4. System provides expert guidance from uploaded template
+```
+
+**Example 2: Generate Model Validation Report**
+```
+1. Go to Settings → GitHub Actions
+2. Trigger "MLOps Model Validation Report" workflow
+3. Inputs:
+   - Model Name: fraud-detector
+   - Model Version: 2.1.0
+   - Validation Type: performance
+   - Metrics: {"accuracy": 0.952, "f1": 0.938, "precision": 0.945, "recall": 0.932}
+4. Download generated .docx from artifacts
+```
+
+**Example 3: Use API to Parse Metrics**
+```bash
+curl -X POST http://localhost:5000/api/mlops/parse-metrics \
+  -H "Content-Type: application/json" \
+  -d '{"metrics": "{\"accuracy\": 0.95, \"f1\": 0.93}"}'
+```
+
+**Example 4: Chat with MLOps Context**
+```
+Query: "Create a deployment checklist for my recommendation model"
+Response: Detailed checklist based on deployment_checklist.md template
+         with model-specific considerations
+```
+
+## Backward Compatibility
+
 The rebranding from "Local AI RAG Chatbot" to "GitHub Process Manager" maintains full backward compatibility:
 
 ### Legacy Function Support
